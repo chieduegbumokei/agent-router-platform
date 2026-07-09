@@ -57,5 +57,21 @@ services:
       - '3000'
     restart: unless-stopped
 
+  # Demo MCP server for the Connectors feature (Settings -> Connectors).
+  # Reuses the backend image (same src/ dir) but skips its dynamo-wait
+  # entrypoint and runs the standalone weather server instead. Not exposed
+  # publicly - the backend calls out to it over the internal compose network,
+  # so add it in-app as connector URL http://weather-mcp:5055/mcp.
+  weather-mcp:
+    build:
+      context: ./backend
+    entrypoint: []
+    command: ['npx', 'tsx', 'src/local/mcp-weather-server.ts']
+    environment:
+      PORT: '5055'
+    expose:
+      - '5055'
+    restart: unless-stopped
+
 volumes:
   dynamodb-data:
