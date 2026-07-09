@@ -78,6 +78,65 @@ HTTP API, and the chat Lambda on a **Function URL in RESPONSE_STREAM mode**
 (API Gateway cannot stream). Point the frontend at the outputs:
 `NEXT_PUBLIC_API_URL` (API) and `NEXT_PUBLIC_CHAT_URL` (Function URL).
 
+## Configuration (environment variables)
+
+Every variable has a safe local default (all are optional - the app boots with
+zero configuration). Backend vars live in `backend/.env`
+(`cp .env.example .env`), frontend vars in `frontend/.env.local`. The single
+source of truth is [backend/src/core/config.ts](backend/src/core/config.ts).
+
+### Backend - core
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `LLM_PROVIDER` | `mock` | `mock` (deterministic, no credentials), `anthropic`, or `bedrock` |
+| `JWT_SECRET` | `dev-secret-change-me` | Signs access tokens - **set a real value in production** |
+| `STORE` | `memory` | `memory` (in-process) or `dynamo` (DynamoDB Local or AWS) |
+| `PORT` | `4000` | Local Express port |
+| `FRONTEND_ORIGIN` | `http://localhost:3000` | CORS allow-origin for the UI |
+
+### Backend - LLM provider
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `ANTHROPIC_API_KEY` | - | Required when `LLM_PROVIDER=anthropic` |
+| `ANTHROPIC_ROUTER_MODEL` | `claude-haiku-4-5` | Classifier model (Anthropic API) |
+| `ANTHROPIC_AGENT_MODEL` | `claude-sonnet-4-5` | Answering model (Anthropic API) |
+| `AWS_REGION` | `us-east-1` | Bedrock + DynamoDB region |
+| `BEDROCK_ROUTER_MODEL` | `us.anthropic.claude-haiku-4-5-20251001-v1:0` | Classifier model (Bedrock inference profile) |
+| `BEDROCK_AGENT_MODEL` | `us.anthropic.claude-sonnet-4-5-20250929-v1:0` | Answering model (Bedrock inference profile) |
+
+`LLM_PROVIDER=bedrock` needs AWS credentials with Bedrock model access in the
+environment (profile, SSO, or instance role) - there is no key variable for it.
+
+### Backend - storage & tools
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `DYNAMO_TABLE` | `assistant-platform` | Table name when `STORE=dynamo` |
+| `DYNAMO_ENDPOINT` | - | Set to `http://localhost:8000` for DynamoDB Local; leave unset on AWS |
+| `TAVILY_API_KEY` | - | Enables real web search; without it the `web_search` tool reports "search unavailable" and the agent answers from its own knowledge |
+
+### Backend - tuning & safety (all optional)
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `ROUTER_TIMEOUT_MS` | `2000` | LLM classification budget before keyword fallback |
+| `CODE_TIMEOUT_MS` | `5000` | Sandboxed code-interpreter wall clock |
+| `MEMORY_EXTRACT_TIMEOUT_MS` | `4000` | Post-answer memory-extraction budget (best-effort) |
+| `CHAT_RATE_PER_DAY` | `200` | Per-user daily chat cap (per-minute caps are fixed in code) |
+| `BLOCKED_TOPICS` | *(empty)* | Comma-separated phrases rejected before any LLM call ([moderation.ts](backend/src/core/moderation.ts)) |
+| `MCP_ALLOW_LOCAL` | `true` | Allow loopback/private MCP URLs - handy in dev, an SSRF vector in prod; [template.yaml](backend/template.yaml) pins it to `false` on AWS |
+| `MCP_CONNECT_TIMEOUT_MS` | `8000` | MCP server connect timeout |
+| `MCP_CALL_TIMEOUT_MS` | `20000` | MCP tool-call timeout |
+
+### Frontend (`frontend/.env.local`)
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `NEXT_PUBLIC_API_URL` | `http://localhost:4000` | Backend API base URL |
+| `NEXT_PUBLIC_CHAT_URL` | *(same as API URL)* | Streaming chat endpoint - set separately when deployed, since chat runs on a Lambda Function URL |
+
 ## Tests
 
 ```bash
