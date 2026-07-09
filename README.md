@@ -145,25 +145,3 @@ frontend/
   src/lib/       api, SSE parser, auth context, thread tree, artifacts
   tests/         55 Vitest tests
 ```
-
-## Known trade-offs (deliberate, documented)
-
-- **Refresh token in localStorage** - httpOnly cookies are stronger but need
-  same-site API domains + CSRF handling; rotation + reuse-revocation limits the
-  blast radius. Production: cookie + CSRF token.
-- **Rate limiting is per-process** - per-instance on Lambda. Production: API
-  Gateway usage plans or DynamoDB counters.
-- **`vm` sandbox is not a hard security boundary** - defense in depth (no
-  require/process, empty env, hard kill, output cap). Production: Firecracker
-  or per-execution Lambda.
-- **Attachment bytes are per-turn context** - only metadata is persisted
-  (DynamoDB 400KB item cap); images inform the turn they were sent in.
-  Production: S3 + presigned URLs.
-- **History search scans bounded partitions** (newest 30 conversations) rather
-  than an index. Production: DynamoDB Streams → OpenSearch.
-- **MCP SSRF surface** - connector URLs are validated (http/s only, private
-  ranges blocked when `MCP_ALLOW_LOCAL=false`, as deployed), but DNS-rebinding
-  protection is out of scope. Tokens are stored write-only and never echoed.
-- **Demo video** - record after `npm run dev` on both sides: signup → routing
-  pill per agent type → tool chips during code execution → stop button →
-  session persistence across reload.
