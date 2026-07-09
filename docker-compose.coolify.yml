@@ -41,8 +41,8 @@ services:
       MCP_ALLOW_LOCAL: 'false'
     depends_on:
       - dynamodb-local
-    ports:
-      - '9011:4000'
+    expose:
+      - '4000'
     restart: unless-stopped
 
   frontend:
@@ -53,8 +53,8 @@ services:
         NEXT_PUBLIC_CHAT_URL: ${NEXT_PUBLIC_CHAT_URL:-${NEXT_PUBLIC_API_URL}}
     depends_on:
       - backend
-    ports:
-      - '9010:3000'
+    expose:
+      - '3000'
     restart: unless-stopped
 
   # Demo MCP server for the Connectors feature (Settings -> Connectors).
