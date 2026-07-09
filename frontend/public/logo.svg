@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 340 96" role="img" aria-label="Cross River">
+  <!-- Placeholder wordmark - replace with the official cross-river-logo.png -->
+  <g fill="#18a0e0">
+    <path d="M292 14c14-10 34-12 42-2 7 9-1 22-15 26-11 3-24 1-27-6-2-6 4-12 12-13 6-1 11 1 11 5 0 3-4 5-8 4 2 2 7 2 10-1 4-3 4-9-2-12-8-4-20-2-27 5-6 6-5 14 2 18 10 6 28 4 38-5" stroke="#18a0e0" stroke-width="6" fill="none" stroke-linecap="round"/>
+    <text x="0" y="78" font-family="Google Sans, Inter, system-ui, sans-serif" font-size="56" font-weight="500" letter-spacing="-1">cross river</text>
+  </g>
+</svg>

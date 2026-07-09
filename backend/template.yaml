@@ -1,0 +1,203 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  AI-Powered Assistant Platform - serverless backend.
+  API Gateway (HTTP API) fronts auth + conversations; the streaming chat
+  function is exposed via a Lambda Function URL in RESPONSE_STREAM mode
+  (API Gateway cannot stream). Build uses esbuild (sam build).
+
+Globals:
+  Function:
+    Runtime: nodejs20.x
+    MemorySize: 512
+    Timeout: 30
+    Environment:
+      Variables:
+        STORE: dynamo
+        LLM_PROVIDER: bedrock
+        DYNAMO_TABLE: !Ref AssistantTable
+        JWT_SECRET: !Ref JwtSecret
+        FRONTEND_ORIGIN: !Ref FrontendOrigin
+
+Parameters:
+  JwtSecret:
+    Type: String
+    NoEcho: true
+    Description: HS256 signing secret (use SSM/SecretsManager in production)
+  FrontendOrigin:
+    Type: String
+    Default: http://localhost:3000
+  TavilyApiKey:
+    Type: String
+    Default: ''
+    NoEcho: true
+
+Resources:
+  AssistantTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - { AttributeName: PK, AttributeType: S }
+        - { AttributeName: SK, AttributeType: S }
+        - { AttributeName: GSI1PK, AttributeType: S }
+        - { AttributeName: GSI1SK, AttributeType: S }
+      KeySchema:
+        - { AttributeName: PK, KeyType: HASH }
+        - { AttributeName: SK, KeyType: RANGE }
+      GlobalSecondaryIndexes:
+        - IndexName: GSI1
+          KeySchema:
+            - { AttributeName: GSI1PK, KeyType: HASH }
+            - { AttributeName: GSI1SK, KeyType: RANGE }
+          Projection: { ProjectionType: ALL }
+      TimeToLiveSpecification: { AttributeName: expiresAt, Enabled: true }
+
+  Api:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      CorsConfiguration:
+        AllowOrigins: [!Ref FrontendOrigin]
+        AllowHeaders: [authorization, content-type]
+        AllowMethods: [GET, POST, PATCH, DELETE, OPTIONS]
+
+  SignupFunction:
+    Type: AWS::Serverless::Function
+    Metadata: &esbuild
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Format: esm
+        OutExtension: ['.js=.mjs']
+        EntryPoints: [src/handlers/lambda.ts]
+    Properties:
+      Handler: src/handlers/lambda.signupHandler
+      CodeUri: .
+      Policies: [DynamoDBCrudPolicy: { TableName: !Ref AssistantTable }]
+      Events:
+        Route: { Type: HttpApi, Properties: { ApiId: !Ref Api, Path: /auth/signup, Method: POST } }
+
+  LoginFunction:
+    Type: AWS::Serverless::Function
+    Metadata: *esbuild
+    Properties:
+      Handler: src/handlers/lambda.loginHandler
+      CodeUri: .
+      Policies: [DynamoDBCrudPolicy: { TableName: !Ref AssistantTable }]
+      Events:
+        Route: { Type: HttpApi, Properties: { ApiId: !Ref Api, Path: /auth/login, Method: POST } }
+
+  RefreshFunction:
+    Type: AWS::Serverless::Function
+    Metadata: *esbuild
+    Properties:
+      Handler: src/handlers/lambda.refreshHandler
+      CodeUri: .
+      Policies: [DynamoDBCrudPolicy: { TableName: !Ref AssistantTable }]
+      Events:
+        Route: { Type: HttpApi, Properties: { ApiId: !Ref Api, Path: /auth/refresh, Method: POST } }
+
+  LogoutFunction:
+    Type: AWS::Serverless::Function
+    Metadata: *esbuild
+    Properties:
+      Handler: src/handlers/lambda.logoutHandler
+      CodeUri: .
+      Policies: [DynamoDBCrudPolicy: { TableName: !Ref AssistantTable }]
+      Events:
+        Route: { Type: HttpApi, Properties: { ApiId: !Ref Api, Path: /auth/logout, Method: POST } }
+
+  ListAgentsFunction:
+    Type: AWS::Serverless::Function
+    Metadata: *esbuild
+    Properties:
+      Handler: src/handlers/lambda.listAgentsHandler
+      CodeUri: .
+      Events:
+        Route: { Type: HttpApi, Properties: { ApiId: !Ref Api, Path: /agents, Method: GET } }
+
+  ListConversationsFunction:
+    Type: AWS::Serverless::Function
+    Metadata: *esbuild
+    Properties:
+      Handler: src/handlers/lambda.listConversationsHandler
+      CodeUri: .
+      Policies: [DynamoDBReadPolicy: { TableName: !Ref AssistantTable }]
+      Events:
+        Route: { Type: HttpApi, Properties: { ApiId: !Ref Api, Path: /conversations, Method: GET } }
+
+  ListMessagesFunction:
+    Type: AWS::Serverless::Function
+    Metadata: *esbuild
+    Properties:
+      Handler: src/handlers/lambda.listMessagesHandler
+      CodeUri: .
+      Policies: [DynamoDBReadPolicy: { TableName: !Ref AssistantTable }]
+      Events:
+        Route: { Type: HttpApi, Properties: { ApiId: !Ref Api, Path: '/conversations/{id}/messages', Method: GET } }
+
+  # Search, rename/delete, feedback, settings, memory, and MCP connectors:
+  # one dispatcher Lambda (routeKey → handler) instead of 15 more functions.
+  UserDataFunction:
+    Type: AWS::Serverless::Function
+    Metadata: *esbuild
+    Properties:
+      Handler: src/handlers/lambda.userDataHandler
+      CodeUri: .
+      Environment:
+        Variables:
+          MCP_ALLOW_LOCAL: 'false' # user-supplied URLs must not reach private ranges
+      Policies: [DynamoDBCrudPolicy: { TableName: !Ref AssistantTable }]
+      Events:
+        SearchConvs: { Type: HttpApi, Properties: { ApiId: !Ref Api, Path: /conversations/search, Method: GET } }
+        RenameConv: { Type: HttpApi, Properties: { ApiId: !Ref Api, Path: '/conversations/{id}', Method: PATCH } }
+        DeleteConv: { Type: HttpApi, Properties: { ApiId: !Ref Api, Path: '/conversations/{id}', Method: DELETE } }
+        DeleteAllConvs: { Type: HttpApi, Properties: { ApiId: !Ref Api, Path: /conversations, Method: DELETE } }
+        Feedback: { Type: HttpApi, Properties: { ApiId: !Ref Api, Path: '/conversations/{id}/messages/{msgId}/feedback', Method: POST } }
+        ListProjects: { Type: HttpApi, Properties: { ApiId: !Ref Api, Path: /projects, Method: GET } }
+        CreateProject: { Type: HttpApi, Properties: { ApiId: !Ref Api, Path: /projects, Method: POST } }
+        GetProject: { Type: HttpApi, Properties: { ApiId: !Ref Api, Path: '/projects/{id}', Method: GET } }
+        PatchProject: { Type: HttpApi, Properties: { ApiId: !Ref Api, Path: '/projects/{id}', Method: PATCH } }
+        DeleteProject: { Type: HttpApi, Properties: { ApiId: !Ref Api, Path: '/projects/{id}', Method: DELETE } }
+        GetSettings: { Type: HttpApi, Properties: { ApiId: !Ref Api, Path: /settings, Method: GET } }
+        PatchSettings: { Type: HttpApi, Properties: { ApiId: !Ref Api, Path: /settings, Method: PATCH } }
+        ListMemories: { Type: HttpApi, Properties: { ApiId: !Ref Api, Path: /memories, Method: GET } }
+        DeleteMemory: { Type: HttpApi, Properties: { ApiId: !Ref Api, Path: '/memories/{id}', Method: DELETE } }
+        DeleteMemories: { Type: HttpApi, Properties: { ApiId: !Ref Api, Path: /memories, Method: DELETE } }
+        ListMcp: { Type: HttpApi, Properties: { ApiId: !Ref Api, Path: /mcp/servers, Method: GET } }
+        CreateMcp: { Type: HttpApi, Properties: { ApiId: !Ref Api, Path: /mcp/servers, Method: POST } }
+        RefreshMcp: { Type: HttpApi, Properties: { ApiId: !Ref Api, Path: '/mcp/servers/{id}/refresh', Method: POST } }
+        PatchMcp: { Type: HttpApi, Properties: { ApiId: !Ref Api, Path: '/mcp/servers/{id}', Method: PATCH } }
+        DeleteMcp: { Type: HttpApi, Properties: { ApiId: !Ref Api, Path: '/mcp/servers/{id}', Method: DELETE } }
+
+  ChatFunction:
+    Type: AWS::Serverless::Function
+    Metadata: *esbuild
+    Properties:
+      Handler: src/handlers/lambda.chatHandler
+      CodeUri: .
+      Timeout: 300
+      MemorySize: 1024
+      Environment:
+        Variables:
+          TAVILY_API_KEY: !Ref TavilyApiKey
+      FunctionUrlConfig:
+        AuthType: NONE # JWT is verified in-handler before any work
+        InvokeMode: RESPONSE_STREAM
+        Cors:
+          AllowOrigins: [!Ref FrontendOrigin]
+          AllowHeaders: [authorization, content-type]
+          AllowMethods: [POST]
+      Policies:
+        - DynamoDBCrudPolicy: { TableName: !Ref AssistantTable }
+        - Statement:
+            - Effect: Allow
+              Action: [bedrock:InvokeModelWithResponseStream, bedrock:InvokeModel]
+              Resource: '*'
+
+Outputs:
+  ApiUrl:
+    Value: !Sub 'https://${Api}.execute-api.${AWS::Region}.amazonaws.com'
+  ChatUrl:
+    Value: !GetAtt ChatFunctionUrl.FunctionUrl

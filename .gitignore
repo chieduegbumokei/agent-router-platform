@@ -1,0 +1,15 @@
+# macOS
+.DS_Store
+
+# Local DynamoDB data (only relevant if a bind-mount is used instead of the
+# named `dynamodb-data` volume; the named volume lives outside the repo).
+data/
+*.db
+shared-local-instance.db
+
+# Env / secrets
+.env
+.env*.local
+
+# Logs
+*.log

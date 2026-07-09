@@ -1,0 +1,61 @@
+# Production stack for Coolify (Docker Compose resource type).
+# `docker-compose.yml` at the repo root stays dev-only (DynamoDB Local for
+# `make dev`) - this file is the full app: dynamodb-local + backend + frontend.
+#
+# Required env vars (set these in Coolify's "Environment Variables" tab):
+#   JWT_SECRET            - random 32+ char secret (e.g. `openssl rand -hex 32`)
+#   ANTHROPIC_API_KEY     - from console.anthropic.com
+#   NEXT_PUBLIC_API_URL   - public URL Coolify assigns/you set for `backend`
+#                           (e.g. https://api.yourdomain.com) - baked in at
+#                           frontend build time, so set it BEFORE first deploy
+#   FRONTEND_ORIGIN       - public URL of the `frontend` service, for backend CORS
+#
+# Optional:
+#   TAVILY_API_KEY, ANTHROPIC_ROUTER_MODEL, ANTHROPIC_AGENT_MODEL, DYNAMO_TABLE
+
+services:
+  dynamodb-local:
+    image: amazon/dynamodb-local:latest
+    command: '-jar DynamoDBLocal.jar -sharedDb -dbPath /home/dynamodblocal/data'
+    user: root
+    working_dir: /home/dynamodblocal
+    volumes:
+      - dynamodb-data:/home/dynamodblocal/data
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+    environment:
+      PORT: '4000'
+      STORE: dynamo
+      DYNAMO_ENDPOINT: http://dynamodb-local:8000
+      DYNAMO_TABLE: ${DYNAMO_TABLE:-assistant-platform}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      LLM_PROVIDER: ${LLM_PROVIDER:-anthropic}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:?ANTHROPIC_API_KEY is required}
+      ANTHROPIC_ROUTER_MODEL: ${ANTHROPIC_ROUTER_MODEL:-claude-haiku-4-5}
+      ANTHROPIC_AGENT_MODEL: ${ANTHROPIC_AGENT_MODEL:-claude-sonnet-4-5}
+      TAVILY_API_KEY: ${TAVILY_API_KEY:-}
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:?FRONTEND_ORIGIN is required}
+      MCP_ALLOW_LOCAL: 'false'
+    depends_on:
+      - dynamodb-local
+    expose:
+      - '4000'
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?NEXT_PUBLIC_API_URL is required}
+        NEXT_PUBLIC_CHAT_URL: ${NEXT_PUBLIC_CHAT_URL:-${NEXT_PUBLIC_API_URL}}
+    depends_on:
+      - backend
+    expose:
+      - '3000'
+    restart: unless-stopped
+
+volumes:
+  dynamodb-data:
