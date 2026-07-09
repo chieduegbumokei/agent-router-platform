@@ -123,6 +123,87 @@ Key decisions (full rationale in [docs/HLD.md](docs/HLD.md)):
   sandboxed code execution with empty env. Threat table in
   [docs/LLD.md §10](docs/LLD.md).
 
+## Project walkthrough
+
+The fastest way to understand the codebase is to follow one chat message from
+keystroke to rendered answer. Every step below links to the file that owns it.
+
+**1. The user hits Send.**
+[Composer.tsx](frontend/src/components/Composer.tsx) collects the text (plus any
+pasted images/files and dictation) and the chat page hands it to `streamChat()`
+in [sse.ts](frontend/src/lib/sse.ts), which POSTs to `/chat` with the JWT and
+feeds the response body through `createSseParser()`. Auth state and silent
+token refresh live in [auth-context.tsx](frontend/src/lib/auth-context.tsx).
+
+**2. Pre-stream validation (plain HTTP errors).**
+The backend entry point is `chat()` in
+[chat.ts](backend/src/handlers/chat.ts) - reached through the Express adapter
+locally ([server.ts](backend/src/local/server.ts)) or the Lambda streaming
+adapter when deployed ([lambda.ts](backend/src/handlers/lambda.ts)); both wrap
+the same transport-neutral handler. Before any bytes stream it verifies the
+JWT, takes per-user rate-limit tokens
+([rate-limit.ts](backend/src/core/rate-limit.ts)), validates the body with Zod,
+and checks the topic blacklist ([moderation.ts](backend/src/core/moderation.ts)).
+Failures here are ordinary 401/400/429 responses.
+
+**3. The conversation thread is resolved.**
+Messages form a tree, not a list - editing a message or regenerating an answer
+creates a sibling branch. [thread.ts](backend/src/core/thread.ts) computes the
+active path (`defaultPath`/`pathTo`) that becomes the LLM history. New
+conversations are created on first message; ephemeral (incognito) chats skip
+the store entirely and use client-supplied history.
+
+**4. Personalization is assembled.**
+User settings, project instructions, and saved memories are folded into a
+system-prompt suffix, and the user's connected MCP servers are turned into
+callable tools ([mcp/tools.ts](backend/src/mcp/tools.ts), speaking Streamable
+HTTP with SSE fallback via [mcp/client.ts](backend/src/mcp/client.ts)).
+
+**5. The router picks an agent.**
+`route()` in [router.ts](backend/src/core/router.ts) asks Claude Haiku to
+classify the message (2s timeout), falling back to keyword heuristics, falling
+back to the generic agent - routing never fails. The choice comes from the
+agent registry ([registry.ts](backend/src/agents/registry.ts)), which also
+generates the classifier prompt, so adding an agent file + one registry line is
+enough to make it routable. A `routing` SSE event is emitted immediately so the
+UI can show the chosen agent before the first token.
+
+**6. The agent loop runs.**
+`runAgentTurn()` in [agent-loop.ts](backend/src/core/agent-loop.ts) streams
+from the LLM ([llm/](backend/src/llm) - Bedrock, Anthropic, or the
+deterministic mock) and executes tool calls for up to 3 turns: web search
+([web-search.ts](backend/src/tools/web-search.ts)), the sandboxed code
+interpreter ([code-interpreter.ts](backend/src/tools/code-interpreter.ts),
+child process with empty env), or any MCP tool. Tokens, tool events, and
+refusals are yielded as SSE events as they happen.
+
+**7. Persistence and memory.**
+The finished answer is stored under the correct tree parent and the
+conversation is touched. If the stream dies midway, whatever text already
+streamed is persisted flagged `truncated` - errors after the 200 travel in-band
+as `error` events. After `done`,
+[memory.ts](backend/src/core/memory.ts) extracts durable facts from the user's
+message (best-effort) and emits a `memory` event that the UI surfaces as the
+"Memory updated" chip.
+
+**8. The UI renders the stream.**
+The chat page ([chat/page.tsx](frontend/src/app/chat/page.tsx)) folds events
+into the message tree ([thread.ts](frontend/src/lib/thread.ts)) and the live
+pipeline view ([pipeline.ts](frontend/src/lib/pipeline.ts) →
+[PipelinePanel.tsx](frontend/src/components/PipelinePanel.tsx)). Markdown is
+sanitized and highlighted in [Markdown.tsx](frontend/src/components/Markdown.tsx),
+and code blocks are lifted into the side panel via
+[artifacts.ts](frontend/src/lib/artifacts.ts).
+
+Auth itself is the one flow that never touches this path:
+[handlers/auth.ts](backend/src/handlers/auth.ts) with bcrypt + timing
+equalization ([passwords.ts](backend/src/auth/passwords.ts)) and refresh-token
+rotation with reuse detection ([tokens.ts](backend/src/auth/tokens.ts)). All
+persistence goes through one `Store` interface
+([store/types.ts](backend/src/store/types.ts)) with in-memory and DynamoDB
+single-table implementations - which is why the whole app runs with zero
+credentials.
+
 ## Repository layout
 
 ```
