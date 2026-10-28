@@ -9,7 +9,7 @@
 ## 1. Repository Layout
 
 ```
-CrossRiver/
+agent-router-platform/
 ├── README.md                     # walkthrough + demo script
 ├── docs/
 │   ├── HLD.md
@@ -261,11 +261,12 @@ Client reads via `fetch` + `ReadableStream` (native `EventSource` can't POST or 
 }
 ```
 
-**Branding**: the Cross River logo (bright-blue `#18a0e0` wordmark + infinity
-ribbon) lives at `frontend/public/cross-river-logo.png` and appears in two
-places, mirroring Milgo's usage: `.brand-logo` in the Topbar (height 22px) and
-the login card header (height 34px, like `.dash-logo`). The logo's own blue is
-close enough to `--accent: #0cccda` that both sit comfortably on the white
+**Branding**: the Agent Router logo (a navy `--primary` tile with a turquoise
+`--accent` router glyph, plus an "agent router" wordmark) lives at
+`frontend/public/logo.svg`, with the glyph alone as `frontend/public/favicon.svg`.
+It appears in two places, mirroring Milgo's usage: `.brand-logo` in the Topbar
+(height 22px) and the login card header (height 34px, like `.dash-logo`). The
+logo is drawn from the existing tokens, so it sits comfortably on the white
 flat surfaces; tokens stay exactly as in Milgo.
 
 Reused component vocabulary (same class names, LTR direction): `.topbar`,

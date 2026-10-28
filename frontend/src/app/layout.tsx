@@ -6,14 +6,10 @@ import 'katex/dist/katex.min.css';
 import '@/styles/globals.css';
 
 export const metadata: Metadata = {
-  title: 'Cross River Assistant',
+  title: 'Agent Router Assistant',
   description: 'AI-Powered Assistant Platform - multi-agent router with streaming responses',
   icons: {
-    icon: [
-      { url: '/favicon-32.jpg', sizes: '32x32', type: 'image/jpeg' },
-      { url: '/favicon-192.jpg', sizes: '192x192', type: 'image/jpeg' },
-    ],
-    apple: [{ url: '/favicon-192.jpg', sizes: '192x192', type: 'image/jpeg' }],
+    icon: [{ url: '/favicon.svg', type: 'image/svg+xml' }],
   },
 };
 

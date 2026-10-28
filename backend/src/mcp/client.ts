@@ -70,7 +70,7 @@ export async function connectMcp(url: string, authToken?: string): Promise<McpCo
     ? { headers: { authorization: `Bearer ${authToken}` } }
     : undefined;
 
-  const client = new Client({ name: 'crossriver-assistant', version: '1.0.0' });
+  const client = new Client({ name: 'agent-router-assistant', version: '1.0.0' });
 
   // Streamable HTTP is the current spec transport; older servers only speak
   // HTTP+SSE. Try modern first, fall back once (the SDK-recommended pattern).

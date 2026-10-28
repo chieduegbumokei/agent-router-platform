@@ -1,6 +1,6 @@
 # High-Level Design - AI-Powered Assistant Platform
 
-> Cross River take-home assignment. Multi-agent assistant platform: a routing agent
+> Take-home assignment. Multi-agent assistant platform: a routing agent
 > delegates authenticated user requests to specialized agents (Generic, Coding,
 > Financial Advisor), streaming responses in real time through a serverless AWS
 > architecture.

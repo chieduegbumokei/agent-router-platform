@@ -156,12 +156,12 @@ async function seedDemoUser(): Promise<void> {
   try {
     await getStore().createUser({
       userId: newId(),
-      email: 'demo@crossriver.com',
+      email: 'demo@example.com',
       passwordHash: await hashPassword('password123'),
       createdAt: new Date().toISOString(),
     });
     // eslint-disable-next-line no-console
-    console.log('demo user ready: demo@crossriver.com / password123');
+    console.log('demo user ready: demo@example.com / password123');
   } catch {
     // already exists (persistent store) - fine
   }

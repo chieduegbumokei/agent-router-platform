@@ -1,5 +1,5 @@
 /* ===========================================================================
-   Cross River Assistant - Milgo/Resend-inspired design system (LTR port)
+   Agent Router Assistant - Milgo/Resend-inspired design system (LTR port)
    Flat surfaces · hairline borders · no layout shadows · navy + turquoise.
    Tokens and component vocabulary carried over from Milgo internal-tool.
    =========================================================================== */
@@ -746,7 +746,7 @@ h1, h2, h3 {
   gap: 6px;
 }
 
-/* Project create/edit modal - claude.ai-style layout on CrossRiver tokens.
+/* Project create/edit modal - claude.ai-style layout on the design tokens.
    Uses .modal.project-modal so the container overrides beat the later .modal rule. */
 .modal.project-modal {
   max-width: 512px;
@@ -4670,16 +4670,20 @@ kbd {
 }
 
 /* ===========================================================================
-   404 / not-found — white canvas, brand logo top-left, the Cross River
-   astronaut mascot centered above a big friendly headline, muted sub-line
-   and one small neutral "Go home" button. Self-contained: no app-token reuse.
+   404 / not-found — white canvas, brand logo top-left, a "dead route"
+   illustration centered above a 404 eyebrow, a big friendly headline, muted
+   sub-line and one navy "Go home" button. Self-contained: no app-token reuse.
    =========================================================================== */
 .nf {
   --nf-bg: #ffffff;
   --nf-title: #111111;
   --nf-lead: #a3a3a3;
-  --nf-btn-bg: #ececec;
-  --nf-btn-bg-hover: #e0e0e0;
+  --nf-navy: #071b35;
+  --nf-navy-hover: #0d2c4d;
+  --nf-accent: #0cccda;
+  --nf-accent-soft: #e8fbfc;
+  --nf-accent-ink: #0a8f99;
+  --nf-dead: #c9ced6;
 
   position: fixed;
   inset: 0;
@@ -4721,27 +4725,87 @@ kbd {
   padding: 16px 24px 72px;
 }
 
-.nf-mascot {
-  width: clamp(220px, 36vh, 360px);
+.nf-art {
+  width: clamp(240px, 40vh, 380px);
   height: auto;
-  margin-bottom: clamp(24px, 4.5vh, 44px);
+  margin-bottom: clamp(20px, 4vh, 40px);
+  overflow: visible;
 }
 
-/* the mascot floats gently, as astronauts do — stilled under reduced-motion */
+.nf-route {
+  fill: none;
+  stroke: var(--nf-accent);
+  stroke-width: 6;
+  stroke-linecap: round;
+}
+
+.nf-route-dead {
+  stroke: var(--nf-dead);
+  stroke-dasharray: 2 12;
+}
+
+.nf-node-origin {
+  fill: var(--nf-navy);
+}
+
+.nf-node-origin-dot {
+  fill: #fff;
+}
+
+.nf-node-agent {
+  fill: var(--nf-accent);
+}
+
+.nf-node-lost {
+  fill: #fff;
+  stroke: var(--nf-dead);
+  stroke-width: 3;
+  stroke-dasharray: 6 6;
+}
+
+.nf-node-lost-mark {
+  fill: var(--nf-lead);
+  font-size: 28px;
+  font-weight: 600;
+  font-family: var(--font-sans);
+}
+
+/* the dead branch keeps marching and the "?" node bobs — stilled under reduced-motion */
 @media (prefers-reduced-motion: no-preference) {
-  .nf-mascot {
-    animation: nf-float 3.4s ease-in-out infinite;
+  .nf-route-dead {
+    animation: nf-march 1.2s linear infinite;
+  }
+
+  .nf-lost {
+    animation: nf-bob 3.4s ease-in-out infinite;
   }
 }
 
-@keyframes nf-float {
+@keyframes nf-march {
+  to {
+    stroke-dashoffset: -28;
+  }
+}
+
+@keyframes nf-bob {
   0%, 100% {
     transform: translateY(0);
   }
 
   50% {
-    transform: translateY(-10px);
+    transform: translateY(-6px);
   }
+}
+
+.nf-eyebrow {
+  margin: 0 0 clamp(14px, 2.2vh, 20px);
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: var(--nf-accent-soft);
+  color: var(--nf-accent-ink);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: .01em;
 }
 
 .nf-title {
@@ -4770,9 +4834,9 @@ kbd {
   height: 44px;
   padding: 0 24px;
   border-radius: 10px;
-  background: var(--nf-btn-bg);
-  color: var(--nf-title);
-  border: 1px solid rgba(0, 0, 0, .06);
+  background: var(--nf-navy);
+  color: #fff;
+  border: 0;
   font-size: 15px;
   font-weight: 500;
   text-decoration: none;
@@ -4780,13 +4844,13 @@ kbd {
 }
 
 .nf-btn:hover {
-  background: var(--nf-btn-bg-hover);
+  background: var(--nf-navy-hover);
   transform: translateY(-1px);
 }
 
 .nf-btn:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px var(--nf-bg), 0 0 0 4px #111;
+  box-shadow: 0 0 0 2px var(--nf-bg), 0 0 0 4px var(--nf-accent);
 }
 
 @media (max-width: 640px) {
@@ -4794,7 +4858,7 @@ kbd {
     padding: 20px 22px 0;
   }
 
-  .nf-mascot {
-    width: min(240px, 62vw);
+  .nf-art {
+    width: min(260px, 72vw);
   }
 }

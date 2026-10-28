@@ -216,7 +216,7 @@ describe('cross-session memory', () => {
 
   it('supports wiping all memories', async () => {
     const token = await makeUser();
-    await sendChat(token, { message: 'Remember that I work at Cross River' });
+    await sendChat(token, { message: 'Remember that I work at Acme Corp' });
     await deleteAllMemories(req('DELETE', '/memories', { token }));
     const listed = await listMemories(req('GET', '/memories', { token }));
     expect((listed.body as { memories: unknown[] }).memories).toHaveLength(0);

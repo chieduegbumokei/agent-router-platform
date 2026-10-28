@@ -31,7 +31,7 @@ export function Topbar({
           <PanelLeft size={16} />
         </button>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/logo.svg" alt="Cross River" className="brand-logo" />
+        <img src="/logo.svg" alt="Agent Router" className="brand-logo" />
         <span className="brand-sub">AI Assistant Platform</span>
       </div>
       <div className="topbar-right">

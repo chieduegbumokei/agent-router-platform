@@ -6,7 +6,7 @@ Advisor**), which can call external tools (**web search**, **sandboxed code
 interpreter**, **user-connected MCP servers**) and streams its answer
 token-by-token to a React UI behind JWT authentication.
 
-Built for the Cross River take-home assignment.
+Built as a take-home assignment.
 
 | | |
 |---|---|

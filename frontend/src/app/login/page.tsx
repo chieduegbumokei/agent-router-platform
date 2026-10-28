@@ -40,12 +40,12 @@ export default function LoginPage() {
       <main className="login-main">
         <div className="login-form-col">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.svg" alt="Cross River" className="login-logo" />
+          <img src="/logo.svg" alt="Agent Router" className="login-logo" />
           <h1>{mode === 'login' ? 'Welcome back' : 'Create your account'}</h1>
           <p className="login-sub">
             {mode === 'login'
-              ? 'Enter the email and password for your Cross River Assistant account'
-              : 'Set an email and password to start using the Cross River Assistant'}
+              ? 'Enter the email and password for your Agent Router Assistant account'
+              : 'Set an email and password to start using the Agent Router Assistant'}
           </p>
 
           <form onSubmit={onSubmit}>
